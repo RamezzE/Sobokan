@@ -21,7 +21,6 @@ const GridBoard = ({
     cols = 10,
     cell = 48,
     initial = { row: 0, col: 0 },
-    showCoords = true,
     stones = [],
     boxes = [],
 }: GridBoardProps) => {
@@ -253,10 +252,6 @@ const GridBoard = ({
                     <PlayerSprite fps={12} className="w-3/4 h-3/4" />
                 </div>
             </div>
-
-            {showCoords && (
-                <p className="font-mono text-sm">row: {pos.row} &nbsp; col: {pos.col}</p>
-            )}
         </div>
     );
 };

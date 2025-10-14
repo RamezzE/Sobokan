@@ -1,16 +1,22 @@
 import GridBoard from "@/components/GridBoard";
+import { stoneCoordinates, boxCoordinates } from "@/constants/coordinates";
 
 const App = () => {
   return (
-    <div style={{ padding: 16 }}>
+    <div className="flex flex-col justify-center items-center gap-y-4 w-screen h-screen">
+      <h1 className="font-semibold">Sokoban Game - Using React, TypeScript & TailwindCSS</h1>
       <GridBoard
         rows={10}
         cols={12}
         cell={48}
         initial={{ row: 1, col: 1 }}
-        stones={[[0, 0], [0, 1], { row: 3, col: 4 }]}
-        boxes={[[2, 2], [2, 3], { row: 5, col: 7 }]}
+        stones={stoneCoordinates}
+        boxes={boxCoordinates}
       />
+
+      <button className="bg-blue-700 p-2 rounded-lg text-white">
+        Restart
+      </button>
     </div>
   );
 }
