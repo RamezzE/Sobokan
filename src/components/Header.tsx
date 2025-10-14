@@ -10,7 +10,7 @@ const Header = () => {
             <button
                 onClick={async () => {
                     await logout();
-                    navigate("/signin");
+                    navigate("/");
                 }}
                 className="bg-white/10 hover:bg-white/20 mr-2 p-2 border border-white/10 rounded-xl text-slate-200 transition"
                 aria-label="Logout"

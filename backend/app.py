@@ -28,9 +28,12 @@ CORS(
         r"/auth/*": {"origins": [FRONTEND_ORIGIN]},
         r"/levels": {"origins": [FRONTEND_ORIGIN]},
         r"/levels/*": {"origins": [FRONTEND_ORIGIN]},
+        r"/users": {"origins": [FRONTEND_ORIGIN]},        # <-- ADD
+        r"/users/*": {"origins": [FRONTEND_ORIGIN]},      # <-- ADD
     },
     supports_credentials=True,
 )
+
 
 app.logger.setLevel(logging.INFO)
 
@@ -41,9 +44,26 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, index=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     user_type = db.Column(db.String(20), default="player", nullable=False)
+    score = db.Column(db.Integer, nullable=False, default=0)  # <-- ADD
 
     def to_dict(self):
-        return {"id": self.id, "username": self.username, "user_type": self.user_type}
+        return {
+            "id": self.id,
+            "username": self.username,
+            "user_type": self.user_type,
+            "score": self.score,             # <-- ADD
+        }
+        
+class UserLevelCompletion(db.Model):
+    __tablename__ = "user_level_completions"
+    id = db.Column(db.String(36), primary_key=True)
+    user_id = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False, index=True)
+    level_id = db.Column(db.String(36), db.ForeignKey("levels.id"), nullable=False, index=True)
+    completed_at = db.Column(db.Integer, nullable=False, default=lambda: int(time.time()))
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "level_id", name="uq_user_level_once"),  # prevent duplicates
+    )
 
 
 class Level(db.Model):
@@ -92,6 +112,20 @@ def make_token(user: User) -> str:
 
 def serialize_user(user: User):
     return {"id": user.id, "username": user.username, "user_type": user.user_type}
+
+def _require_user(req):
+    auth = req.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        raise ValueError("Missing bearer token")
+    token = auth.split(" ", 1)[1].strip()
+    try:
+        claims = jwt.decode(token, SECRET, algorithms=["HS256"])
+        return claims.get("sub"), claims  # (user_id, claims)
+    except jwt.ExpiredSignatureError:
+        raise ValueError("Token expired")
+    except jwt.InvalidTokenError:
+        raise ValueError("Invalid token")
+
 
 def _require_admin(req):
     auth = req.headers.get("Authorization", "")
@@ -285,6 +319,52 @@ def get_level(level_id: str):
     if not level:
         return jsonify({"message": "Level not found"}), 404
     return jsonify({"level": level.to_dict()}), 200
+
+@app.post("/levels/<level_id>/complete")
+def complete_level(level_id: str):
+    try:
+        user_id, _ = _require_user(request)
+    except ValueError as e:
+        return jsonify({"message": str(e)}), 401
+
+    user = User.query.filter_by(id=user_id).first()
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    level = Level.query.filter_by(id=level_id).first()
+    if not level:
+        return jsonify({"message": "Level not found"}), 404
+
+    # Check if already completed
+    exists = UserLevelCompletion.query.filter_by(user_id=user.id, level_id=level.id).first()
+    if exists:
+        return jsonify({
+            "message": "Already completed",
+            "user": user.to_dict(),
+            "level": level.to_dict()
+        }), 200
+
+    # Record completion and add score
+    rec = UserLevelCompletion(
+        id=str(uuid.uuid4()),
+        user_id=user.id,
+        level_id=level.id,
+        completed_at=int(time.time()),
+    )
+    db.session.add(rec)
+    user.score = (user.score or 0) + int(level.score)
+    db.session.commit()
+
+    return jsonify({
+        "message": "Completion recorded",
+        "user": user.to_dict(),
+        "level": level.to_dict()
+    }), 201
+
+@app.get("/users")
+def list_users():
+    users = User.query.order_by(User.username.asc()).all()
+    return jsonify({"users": [u.to_dict() for u in users]}), 200
 
 # -------------------- Bootstrap --------------------
 def _seed_admin():

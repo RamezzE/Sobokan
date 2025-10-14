@@ -78,6 +78,7 @@ const GameScreen = () => {
                         <div className="py-10 text-slate-300 text-sm">Loading…</div>
                     ) : (
                         <GridBoard
+                            id={levelId as string}
                             rows={currentLevel.rows}
                             cols={currentLevel.cols}
                             cell={currentLevel.cell}

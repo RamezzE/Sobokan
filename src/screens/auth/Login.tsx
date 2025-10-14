@@ -6,11 +6,11 @@ type LoginValues = { username: string; password: string };
 
 const LoginPage = () => {
     const navigate = useNavigate();
-    const { user, login: onSubmit } = useAuthStore();
+    const { user, login: onSubmit, loginAsGuest } = useAuthStore();
 
     useEffect(() => {
         if (user && (user.user_type === "player" || user.user_type === "guest" || user.user_type === "admin")) navigate("/game/view-levels");
-        
+
     }, [user, navigate]);
 
     const [values, setValues] = useState<LoginValues>({ username: "", password: "" });
@@ -143,22 +143,7 @@ const LoginPage = () => {
                             )}
                         </div>
 
-                        {/* Actions */}
-                        <div className="flex justify-between items-center mt-6">
-                            <label className="inline-flex items-center gap-2 text-slate-300 text-sm">
-                                <input
-                                    type="checkbox"
-                                    className="bg-white/5 border-white/20 rounded focus:ring-indigo-300/40 w-4 h-4 text-indigo-400"
-                                />
-                                Remember me
-                            </label>
-                            <button
-                                type="button"
-                                className="text-indigo-300 hover:text-white text-sm underline underline-offset-4"
-                            >
-                                Forgot password?
-                            </button>
-                        </div>
+                      
 
                         <button
                             type="submit"
@@ -183,9 +168,19 @@ const LoginPage = () => {
                             Sign up
                         </Link>
                     </p>
+                    <button
+                        className="group flex flex-col mt-2 w-full text-slate-300 hover:text-white text-sm text-center cursor-pointer"
+                        onClick={() => loginAsGuest()}
+                    >
+                        <p>Continue as Guest?</p>
+                        <p className="opacity-0 group-hover:opacity-100 text-red-400 transition">
+                            N.B: Guest users cannot save progress.
+                        </p>
+                    </button>
+
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 

@@ -32,3 +32,18 @@ export type Level = LevelData & {
     created_by: string;
     created_at: number; // epoch seconds
 };
+
+// --- Types ---
+export type User = {
+    id: string;
+    username: string;
+    user_type: "player" | "guest" | "admin" | string;
+    score: number;
+};
+
+export type CompleteLevelResponse = {
+    message: string;
+    user: User;
+    level: Level; // already defined in your apis.ts
+};
+

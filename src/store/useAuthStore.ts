@@ -20,6 +20,7 @@ type AuthState = {
 
 type AuthActions = {
     login: (input: { username: string; password: string }) => Promise<void>;
+    loginAsGuest: () => Promise<void>;
     signup: (input: { username: string; password: string }) => Promise<void>;
     logout: () => Promise<void>;
 
@@ -69,6 +70,33 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                     });
 
                     console.log("login success", data);
+                } catch (err: any) {
+                    set({
+                        loading: false,
+                        error: err?.message ?? "Login error",
+                        user: null,
+                        accessToken: null,
+                        isAuthenticated: false,
+                    });
+                    throw err;
+                }
+            },
+
+            loginAsGuest: async () => {
+                set({ error: null });
+                try {
+                    setAuthToken(null);
+                    set({
+                        user: {
+                            id: "guest",
+                            username: "Guest",
+                            user_type: "guest",
+                        },
+                        accessToken: null,
+                        isAuthenticated: true,
+                        loading: false,
+                        error: null,
+                    });
                 } catch (err: any) {
                     set({
                         loading: false,

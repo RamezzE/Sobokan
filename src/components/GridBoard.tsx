@@ -5,8 +5,11 @@ import stone from "@/assets/stone.svg";
 import box from "@/assets/box.svg";
 import sand from "@/assets/sand.svg";
 
+import { useGameStore } from "@/store/useGameStore";
+import { useAuthStore } from "@/store/useAuthStore";
 
 type GridBoardProps = {
+    id: string;
     rows?: number;
     cols?: number;
     cell?: number; // px per cell
@@ -19,6 +22,7 @@ type GridBoardProps = {
 };
 
 const GridBoard = ({
+    id,
     rows = 10,
     cols = 10,
     cell = 48,
@@ -30,6 +34,18 @@ const GridBoard = ({
     finishPoints = [],
 
 }: GridBoardProps) => {
+    const { user } = useAuthStore();
+    const { completeLevel } = useGameStore();
+    // Track win state
+    const [won, setWon] = useState(false);
+
+    useEffect(() => {
+        if (won && user && (user.user_type === "player" || user.user_type === "admin")) {
+            completeLevel(id).catch(() => {
+                // Handle error
+            });
+        }
+    }, [won]);
 
     useEffect(() => {
         if (restart) {
@@ -51,9 +67,6 @@ const GridBoard = ({
     const [boxCells, setBoxCells] = useState<{ row: number; col: number }[]>(
         () => norm(boxes)
     );
-
-    // Track win state
-    const [won, setWon] = useState(false);
 
     // Remember the initial number of boxes to validate finishPoints count
     const initialBoxCountRef = useRef<number>(norm(boxes).length);

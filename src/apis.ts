@@ -1,5 +1,5 @@
 import axios, { AxiosError } from "axios";
-import type { Level, LevelData, AuthResponse, LoginRequest, SignupRequest } from "@/types";
+import type { User, CompleteLevelResponse, Level, LevelData, AuthResponse, LoginRequest, SignupRequest } from "@/types";
 
 // ---- Axios instance ----
 export const api = axios.create({
@@ -81,5 +81,24 @@ export async function getLevel(levelId: string): Promise<Level> {
         return data.level;
     } catch (e) {
         throw toError(e, "Failed to fetch level");
-    }   
+    }
+}
+
+// --- Endpoints ---
+export async function getUsers(): Promise<User[]> {
+    try {
+        const { data } = await api.get<{ users: User[] }>("/users");
+        return data.users;
+    } catch (e) {
+        throw toError(e, "Failed to fetch users");
+    }
+}
+
+export async function completeLevel(levelId: string): Promise<CompleteLevelResponse> {
+    try {
+        const { data } = await api.post<CompleteLevelResponse>(`/levels/${levelId}/complete`);
+        return data;
+    } catch (e) {
+        throw toError(e, "Failed to complete level");
+    }
 }
