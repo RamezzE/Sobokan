@@ -11,3 +11,8 @@ export const boxCoordinates: Coord[] = [
     { row: 2, col: 2 }, { row: 2, col: 3 },
     { row: 5, col: 7 }
 ];
+
+export const finishCoordinates: Coord[] = [
+    { row: 1, col: 10 }, { row: 2, col: 10 },
+    { row: 3, col: 10 },
+];

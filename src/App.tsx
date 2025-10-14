@@ -1,6 +1,6 @@
 import { useState } from "react";
 import GridBoard from "@/components/GridBoard";
-import { stoneCoordinates, boxCoordinates } from "@/constants/coordinates";
+import { stoneCoordinates, boxCoordinates, finishCoordinates } from "@/constants/coordinates";
 
 const App = () => {
   const [restart, setRestart] = useState(false);
@@ -17,6 +17,7 @@ const App = () => {
         boxes={boxCoordinates}
         restart={restart}
         onRestarted={() => setRestart(false)}
+        finishPoints={finishCoordinates}
       />
 
       <button className="bg-blue-700 hover:bg-blue-900 p-2 rounded-lg text-white transition cursor-pointer"

@@ -15,6 +15,7 @@ type GridBoardProps = {
     boxes?: Coord[];   // initial layout only
     restart?: boolean; // when toggled, resets player and boxes to initial
     onRestarted?: () => void; // called after restart is processed
+    finishPoints?: Coord[];  // must have same count as initial boxes
 };
 
 const GridBoard = ({
@@ -26,12 +27,15 @@ const GridBoard = ({
     boxes = [],
     restart = false,
     onRestarted = () => { },
+    finishPoints = [],
+
 }: GridBoardProps) => {
 
     useEffect(() => {
         if (restart) {
             setPos(initial);
             setBoxCells(() => norm(boxes));
+            setWon(false);
             onRestarted();
         }
     }, [restart, initial, boxes, onRestarted]);
@@ -48,63 +52,80 @@ const GridBoard = ({
         () => norm(boxes)
     );
 
-    // Precompute stone set (never changes)
+    // Track win state
+    const [won, setWon] = useState(false);
+
+    // Remember the initial number of boxes to validate finishPoints count
+    const initialBoxCountRef = useRef<number>(norm(boxes).length);
+
+    const finishCells = useMemo(() => norm(finishPoints), [finishPoints]);
+
     const stoneSet = useMemo(() => {
         const s = new Set<string>();
         norm(stones).forEach(({ row, col }) => s.add(`${row},${col}`));
         return s;
     }, [stones]);
 
-    // Box set recomputed from state
     const boxSet = useMemo(() => {
         const s = new Set<string>();
         boxCells.forEach(({ row, col }) => s.add(`${row},${col}`));
         return s;
     }, [boxCells]);
 
-    const inBounds = (r: number, c: number) =>
-        r >= 0 && r < rows && c >= 0 && c < cols;
-
+    const inBounds = (r: number, c: number) => r >= 0 && r < rows && c >= 0 && c < cols;
     const isStone = (r: number, c: number) => stoneSet.has(`${r},${c}`);
     const isBox = (r: number, c: number) => boxSet.has(`${r},${c}`);
 
+    // Validate finish count equals initial box count (one-time rule)
+    const finishCountValid = finishCells.length === initialBoxCountRef.current;
+
+    // Given a candidate box array, decide if all finish points are covered
+    const allFinished = (candidate: { row: number; col: number }[]) => {
+        if (!finishCountValid || candidate.length === 0 || finishCells.length === 0) return false;
+        const s = new Set(candidate.map(b => `${b.row},${b.col}`));
+        for (const { row, col } of finishCells) {
+            if (!s.has(`${row},${col}`)) return false;
+        }
+        return true;
+    };
+
+
     const moveBy = (dr: number, dc: number) => {
+        if (won) return; // no moves after winning
         setPos((p) => {
             const nr = p.row + dr;
             const nc = p.col + dc;
+            if (!inBounds(nr, nc)) return p;          // out of bounds
+            if (isStone(nr, nc)) return p;            // stone blocks
 
-            // Block moving outside grid
-            if (!inBounds(nr, nc)) return p;
-
-            // Block stepping into stones
-            if (isStone(nr, nc)) return p;
-
-            // If next cell is a box, try to push it
+            // Try pushing a box
             if (isBox(nr, nc)) {
                 const br = nr + dr;
                 const bc = nc + dc;
+                if (!inBounds(br, bc) || isStone(br, bc) || isBox(br, bc)) return p; // blocked
 
-                // Can't push out of bounds, into another box, or into a stone
-                if (!inBounds(br, bc) || isStone(br, bc) || isBox(br, bc)) {
-                    return p;
-                }
-
-                // Perform the push: move that box from (nr,nc) -> (br,bc)
-                setBoxCells((prev) => {
-                    // Move the single box that matches (nr,nc)
-                    return prev.map((b) =>
+                // Push the box forward by one cell
+                setBoxCells(prev => {
+                    const next = prev.map(b =>
                         b.row === nr && b.col === nc ? { row: br, col: bc } : b
                     );
+                    // After boxes change, check win
+                    setWon(allFinished(next));
+                    return next;
                 });
 
-                // Player moves into the box's former cell
+                // Player steps into the box's former tile
                 return { row: nr, col: nc };
             }
 
-            // Normal move into empty cell
-            return { row: nr, col: nc };
+            // Normal move into empty tile
+            const moved = { row: nr, col: nc };
+            // Check win even on normal move (rule: "whenever the player moves")
+            setWon(allFinished(boxCells));
+            return moved;
         });
     };
+
 
     useEffect(() => {
         boardRef.current?.focus();
@@ -168,6 +189,14 @@ const GridBoard = ({
             >
                 {/* Board size box */}
                 <div className="w-[var(--w)] h-[var(--h)]" />
+                {won && (
+                    <div className={[
+                        "absolute inset-0 z-30",
+                        "bg-black/50 flex items-center justify-center",
+                    ].join(" ")}>
+                        <span className="font-semibold text-white text-3xl">You Won!</span>
+                    </div>
+                )}
 
                 {/* Sand base layer */}
                 <div className="z-0 absolute inset-0">
@@ -225,6 +254,28 @@ const GridBoard = ({
                     ))}
                 </div>
 
+                {/* Finish points layer (above sand, below boxes) */}
+                <div className="z-[5] absolute inset-0">
+                    {finishCells.map(({ row, col }, idx) => (
+                        <div
+                            key={`finish-${row}-${col}-${idx}`}
+                            style={
+                                {
+                                    ["--fr" as any]: row,
+                                    ["--fc" as any]: col,
+                                } as React.CSSProperties
+                            }
+                            className={[
+                                "absolute top-0 left-0",
+                                "w-[var(--cell)] h-[var(--cell)]",
+                                "translate-x-[calc(var(--fc)*var(--cell))] translate-y-[calc(var(--fr)*var(--cell))]",
+                            ].join(" ")}
+                        >
+                            {/* red dot centered within the cell */}
+                            <div className="top-1/2 left-1/2 absolute bg-red-500 shadow rounded-full w-2 h-2 -translate-x-1/2 -translate-y-1/2" />
+                        </div>
+                    ))}
+                </div>
 
                 {/* Boxes layer (above stones, below player) */}
                 <div className="z-10 absolute inset-0">
