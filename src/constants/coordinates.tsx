@@ -1,7 +1,4 @@
-export interface Coord {
-    row: number;
-    col: number;
-}
+import type { Coord } from "@/types";
 
 export const stoneCoordinates: Coord[] = [
     { row: 0, col: 0 }, { row: 0, col: 1 },

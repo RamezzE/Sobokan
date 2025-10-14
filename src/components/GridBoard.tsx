@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { Coord } from "@/types";
 import PlayerSprite from "./PlayerSprite";
 import stone from "@/assets/stone.svg";
 import box from "@/assets/box.svg";
 import sand from "@/assets/sand.svg";
 
-type Coord = { row: number; col: number } | [number, number];
 
 type GridBoardProps = {
     rows?: number;
