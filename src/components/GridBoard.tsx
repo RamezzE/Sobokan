@@ -11,9 +11,10 @@ type GridBoardProps = {
     cols?: number;
     cell?: number; // px per cell
     initial?: { row: number; col: number };
-    showCoords?: boolean;
     stones?: Coord[]; // cells with stone.png
     boxes?: Coord[];   // initial layout only
+    restart?: boolean; // when toggled, resets player and boxes to initial
+    onRestarted?: () => void; // called after restart is processed
 };
 
 const GridBoard = ({
@@ -23,7 +24,18 @@ const GridBoard = ({
     initial = { row: 0, col: 0 },
     stones = [],
     boxes = [],
+    restart = false,
+    onRestarted = () => { },
 }: GridBoardProps) => {
+
+    useEffect(() => {
+        if (restart) {
+            setPos(initial);
+            setBoxCells(() => norm(boxes));
+            onRestarted();
+        }
+    }, [restart, initial, boxes, onRestarted]);
+
     const [pos, setPos] = useState(initial);
     const boardRef = useRef<HTMLDivElement>(null);
 
