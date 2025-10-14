@@ -88,7 +88,7 @@ const ViewLevelsPage = () => {
                     ) : (
                         <div className="gap-4 sm:gap-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                             {levels.map((lvl) => (
-                                <LevelCard key={lvl.id} level={{ name: lvl.name, score: lvl.score }} />
+                                <LevelCard key={lvl.id} level={{ id: lvl.id, name: lvl.name, score: lvl.score }} />
                             ))}
                         </div>
                     )}

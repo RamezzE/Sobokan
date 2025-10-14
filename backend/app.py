@@ -279,6 +279,13 @@ def create_level():
     db.session.commit()
     return jsonify({"level": level.to_dict()}), 201
 
+@app.get("/levels/<level_id>")
+def get_level(level_id: str):
+    level = Level.query.filter_by(id=level_id).first()
+    if not level:
+        return jsonify({"message": "Level not found"}), 404
+    return jsonify({"level": level.to_dict()}), 200
+
 # -------------------- Bootstrap --------------------
 def _seed_admin():
     if not User.query.filter_by(username="admin").first():

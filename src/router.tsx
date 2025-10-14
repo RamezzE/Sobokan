@@ -15,7 +15,7 @@ export const router = createBrowserRouter([
             { path: "signin", element: <LoginPage /> },
             { path: "signup", element: <SignupPage /> },
             { path: "game/view-levels", element: <ViewLevelsPage /> },
-            { path: "game/play", element: <GameScreen /> },
+            { path: "/game/:levelId", element: <GameScreen /> },
             { path: "admin/create-level", element: <CreateLevel /> },
         ]
     },

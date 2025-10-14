@@ -1,5 +1,5 @@
 import { useAuthStore } from "@/store/useAuthStore"
-import { useNavigate } from "react-router"
+import { Link, useNavigate } from "react-router"
 
 const Header = () => {
     const navigate = useNavigate();
@@ -27,6 +27,10 @@ const Header = () => {
             <span className="hidden sm:inline mr-3 text-slate-300 text-sm">
                 @{user.username}
             </span>
+
+            <Link to="/game/view-levels" className="bg-indigo-500 hover:bg-indigo-400 disabled:opacity-50 shadow-indigo-500/20 shadow-lg ml-auto px-4 py-2 rounded-xl font-semibold text-white transition disabled:cursor-not-allowed">
+                Levels
+            </Link>
         </div>
 
     )

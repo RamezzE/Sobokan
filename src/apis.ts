@@ -75,3 +75,11 @@ export async function createLevel(input: LevelData): Promise<Level> {
     }
 }
 
+export async function getLevel(levelId: string): Promise<Level> {
+    try {
+        const { data } = await api.get<{ level: Level }>(`/levels/${levelId}`);
+        return data.level;
+    } catch (e) {
+        throw toError(e, "Failed to fetch level");
+    }   
+}
