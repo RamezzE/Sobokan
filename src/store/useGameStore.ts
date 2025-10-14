@@ -1,5 +1,7 @@
 import { create } from "zustand";
-import { getLevels, createLevel, type Level, type LevelData } from "@/apis";
+import { getLevels, createLevel } from "@/apis";
+
+import type { Level, LevelData } from "@/types";
 
 type GameState = {
     levels: Level[];

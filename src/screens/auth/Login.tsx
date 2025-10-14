@@ -9,8 +9,7 @@ const LoginPage = () => {
     const { user, login: onSubmit } = useAuthStore();
 
     useEffect(() => {
-        if (user && (user.user_type === "player" || user.user_type === "guest")) navigate("/game");
-        else if (user && user.user_type === "admin") navigate("/admin/create-level");
+        if (user && (user.user_type === "player" || user.user_type === "guest" || user.user_type === "admin")) navigate("/game/view-levels");
         
     }, [user, navigate]);
 

@@ -1,0 +1,73 @@
+import { useEffect } from "react";
+import { useGameStore } from "@/store/useGameStore";
+import LevelCard from "@/components/LevelCard";
+import { useAuthStore } from "@/store/useAuthStore";
+import { useNavigate } from "react-router-dom";
+
+const ViewLevelsPage = () => {
+    const { levels, loading, error, fetchLevels, clearError } = useGameStore();
+    const { user } = useAuthStore();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        if (!user)
+            navigate("/signin");
+    }, [user]);
+
+    useEffect(() => {
+        fetchLevels().catch(() => { });
+    }, [fetchLevels]);
+
+    return (
+        <div className="w-full max-w-5xl">
+            <div className="bg-white/10 shadow-2xl backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden">
+                {/* Header */}
+                <div className="flex justify-between items-center px-6 sm:px-8 py-5 sm:py-6 border-white/10 border-b">
+                    <div>
+                        <h1 className="font-semibold text-white text-2xl sm:text-3xl">Levels</h1>
+                        <p className="mt-1 text-slate-300 text-sm">Browse available levels.</p>
+                    </div>
+                    <button
+                        onClick={() => fetchLevels().catch(() => { })}
+                        className="bg-indigo-500 hover:bg-indigo-400 disabled:opacity-50 shadow-indigo-500/20 shadow-lg px-4 py-2 rounded-xl font-semibold text-white transition disabled:cursor-not-allowed"
+                        disabled={loading}
+                    >
+                        {loading ? "Refreshing…" : "Refresh"}
+                    </button>
+                </div>
+
+                {/* Alerts */}
+                {error && (
+                    <div className="px-6 sm:px-8 py-3 border-white/10 border-b">
+                        <div className="flex justify-between items-center bg-rose-500/10 px-4 py-2 border border-rose-400/40 rounded-xl text-rose-200 text-sm">
+                            <span>{error}</span>
+                            <button
+                                onClick={clearError}
+                                className="text-rose-200/80 hover:text-rose-100 underline underline-offset-4"
+                            >
+                                Dismiss
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Content */}
+                <div className="p-4 sm:p-6">
+                    {loading && levels.length === 0 ? (
+                        <div className="py-10 text-slate-300 text-sm text-center">Loading levels…</div>
+                    ) : levels.length === 0 ? (
+                        <div className="py-10 text-slate-300 text-sm text-center">No levels available yet.</div>
+                    ) : (
+                        <div className="gap-4 sm:gap-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                            {levels.map((lvl) => (
+                                <LevelCard key={lvl.id} level={{ name: lvl.name, score: lvl.score }} />
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+export default ViewLevelsPage;

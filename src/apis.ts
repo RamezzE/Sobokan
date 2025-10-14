@@ -1,4 +1,5 @@
 import axios, { AxiosError } from "axios";
+import type { Level, LevelData, AuthResponse, LoginRequest, SignupRequest } from "@/types";
 
 // ---- Axios instance ----
 export const api = axios.create({
@@ -15,21 +16,6 @@ export const setAuthToken = (token: string | null) => {
     } else {
         delete api.defaults.headers.common["Authorization"];
     }
-};
-
-// ---- Types shared with store ----
-export type AuthUser = {
-    id: string;
-    username: string;
-    user_type: "player" | "admin" | "guest";
-};
-
-export type LoginRequest = { username: string; password: string };
-export type SignupRequest = { username: string; password: string };
-
-export type AuthResponse = {
-    user: AuthUser;
-    accessToken: string;
 };
 
 // ---- Helpers ----
@@ -69,26 +55,6 @@ export async function logoutApi(): Promise<void> {
         // usually safe to ignore logout errors client-side
     }
 }
-
-import type { Coord } from "@/types";
-
-export type LevelData = {
-    rows: number;
-    cols: number;
-    cell: number;
-    stones: Coord[];
-    boxes: Coord[];
-    finishPoints: Coord[];
-    initial: Coord;          // note: null not allowed for POST (must be provided)
-    name: string;
-    score: number;
-};
-
-export type Level = LevelData & {
-    id: string;
-    created_by: string;
-    created_at: number; // epoch seconds
-};
 
 // --- Endpoints ---
 export async function getLevels(): Promise<Level[]> {

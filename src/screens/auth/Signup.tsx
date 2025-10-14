@@ -13,7 +13,7 @@ const SignUpPage = () => {
     const { user, signup: onSubmit } = useAuthStore();
 
     useEffect(() => {
-        if (user && user.user_type === "player") navigate("/game");
+        if (user && (user.user_type === "player" || user.user_type === "guest" || user.user_type === "admin")) navigate("/game/view-levels");
     }, [user, navigate]);
 
     const [values, setValues] = useState<SignUpValues>({

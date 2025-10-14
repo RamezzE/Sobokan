@@ -3,7 +3,8 @@ import App from "@/App";
 import LoginPage from "@/screens/auth/Login";
 import SignupPage from "@/screens/auth/Signup";
 import GameScreen from "@/screens/game/GameScreen";
-import CreateLevel from "./screens/admin/createLevel";
+import CreateLevel from "@/screens/admin/createLevel";
+import ViewLevelsPage from "@/screens/game/ViewLevels";
 
 export const router = createBrowserRouter([
     {
@@ -13,7 +14,8 @@ export const router = createBrowserRouter([
             { index: true, element: <LoginPage /> },
             { path: "signin", element: <LoginPage /> },
             { path: "signup", element: <SignupPage /> },
-            { path: "game", element: <GameScreen /> },
+            { path: "game/view-levels", element: <ViewLevelsPage /> },
+            { path: "game/play", element: <GameScreen /> },
             { path: "admin/create-level", element: <CreateLevel /> },
         ]
     },

@@ -1,13 +1,13 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import {
-    type AuthUser,
-    type AuthResponse,
     loginApi,
     signupApi,
     logoutApi,
     setAuthToken,
 } from "@/apis";
+
+import type { AuthUser, AuthResponse } from "@/types";
 
 type AuthState = {
     user: AuthUser | null;
