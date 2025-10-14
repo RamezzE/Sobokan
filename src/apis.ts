@@ -69,3 +69,43 @@ export async function logoutApi(): Promise<void> {
         // usually safe to ignore logout errors client-side
     }
 }
+
+import type { Coord } from "@/types";
+
+export type LevelData = {
+    rows: number;
+    cols: number;
+    cell: number;
+    stones: Coord[];
+    boxes: Coord[];
+    finishPoints: Coord[];
+    initial: Coord;          // note: null not allowed for POST (must be provided)
+    name: string;
+    score: number;
+};
+
+export type Level = LevelData & {
+    id: string;
+    created_by: string;
+    created_at: number; // epoch seconds
+};
+
+// --- Endpoints ---
+export async function getLevels(): Promise<Level[]> {
+    try {
+        const { data } = await api.get<{ levels: Level[] }>("/levels");
+        return data.levels;
+    } catch (e) {
+        throw toError(e, "Failed to fetch levels");
+    }
+}
+
+export async function createLevel(input: LevelData): Promise<Level> {
+    try {
+        const { data } = await api.post<{ level: Level }>("/levels", input);
+        return data.level;
+    } catch (e) {
+        throw toError(e, "Failed to create level");
+    }
+}
+
