@@ -27,13 +27,41 @@ const ViewLevelsPage = () => {
                         <h1 className="font-semibold text-white text-2xl sm:text-3xl">Levels</h1>
                         <p className="mt-1 text-slate-300 text-sm">Browse available levels.</p>
                     </div>
-                    <button
-                        onClick={() => fetchLevels().catch(() => { })}
-                        className="bg-indigo-500 hover:bg-indigo-400 disabled:opacity-50 shadow-indigo-500/20 shadow-lg px-4 py-2 rounded-xl font-semibold text-white transition disabled:cursor-not-allowed"
-                        disabled={loading}
-                    >
-                        {loading ? "Refreshing…" : "Refresh"}
-                    </button>
+
+                    <div className="flex flex-row gap-x-4">
+                        {
+                            user && user.user_type === "admin" && (
+                                <button
+                                    onClick={() => navigate("/admin/create-level")}
+                                    className="bg-green-500 hover:bg-green-400 disabled:opacity-50 shadow-green-500/20 shadow-lg px-4 py-2 rounded-xl font-semibold text-white transition disabled:cursor-not-allowed"
+                                    disabled={loading}
+                                >
+                                    {/* inline Add icon */}
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-label="Add" role="img">
+                                        <circle cx="12" cy="12" r="9" />
+                                        <line x1="12" y1="8" x2="12" y2="16" />
+                                        <line x1="8" y1="12" x2="16" y2="12" />
+                                    </svg>
+
+                                </button>
+                            )
+                        }
+
+
+                        <button
+                            onClick={() => fetchLevels().catch(() => { })}
+                            className="bg-indigo-500 hover:bg-indigo-400 disabled:opacity-50 shadow-indigo-500/20 shadow-lg px-4 py-2 rounded-xl font-semibold text-white transition disabled:cursor-not-allowed"
+                            disabled={loading}
+                        >
+                            {/* inline Restart icon */}
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="21 3 21 9 15 9" />
+                                <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+                            </svg>
+                        </button>
+                    </div>
+
+
                 </div>
 
                 {/* Alerts */}

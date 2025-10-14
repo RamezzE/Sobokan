@@ -1,130 +1,112 @@
-import os, time, uuid
-from dataclasses import dataclass
-from typing import Dict, Optional
+# app.py
+import os, time, uuid, logging, jwt, json
+from typing import List, Dict
+from datetime import datetime
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
-import jwt
 from dotenv import load_dotenv
-import logging
-
 
 load_dotenv()
 
 SECRET = os.getenv("FLASK_SECRET", "dev-secret")
 FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
-JWT_EXP_SECONDS = 60 * 60 * 24  # 24h
+JWT_EXP_SECONDS = int(os.getenv("JWT_EXP_SECONDS", "86400"))
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///dev.sqlite3")
 
 app = Flask(__name__)
-# CORS(app, resources={r"/auth/*": {"origins": [FRONTEND_ORIGIN]}}, supports_credentials=True)
+app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-app.logger.setLevel(logging.INFO)  # DEBUG / INFO / WARNING / ERROR
+db = SQLAlchemy(app)
+
+CORS(
+    app,
+    resources={
+        r"/auth/*": {"origins": [FRONTEND_ORIGIN]},
+        r"/levels": {"origins": [FRONTEND_ORIGIN]},
+        r"/levels/*": {"origins": [FRONTEND_ORIGIN]},
+    },
+    supports_credentials=True,
+)
+
+app.logger.setLevel(logging.INFO)
+
+# -------------------- Models --------------------
+class User(db.Model):
+    __tablename__ = "users"
+    id = db.Column(db.String(36), primary_key=True)
+    username = db.Column(db.String(80), unique=True, index=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
+    user_type = db.Column(db.String(20), default="player", nullable=False)
+
+    def to_dict(self):
+        return {"id": self.id, "username": self.username, "user_type": self.user_type}
 
 
-# ---- In-memory "DB" (replace with real DB) ----
-@dataclass
-class User:
-    id: str
-    username: str
-    password_hash: str
-    user_type: str = "player"         # <-- NEW: default user type
+class Level(db.Model):
+    __tablename__ = "levels"
+    id = db.Column(db.String(36), primary_key=True)
+    name = db.Column(db.String(120), unique=True, nullable=False)
+    score = db.Column(db.Integer, nullable=False)
+    rows = db.Column(db.Integer, nullable=False)
+    cols = db.Column(db.Integer, nullable=False)
+    cell = db.Column(db.Integer, nullable=False)
 
-USERS_BY_USERNAME: Dict[str, User] = {}
+    # Use TEXT + JSON dump/load for maximum SQLite compatibility
+    stones = db.Column(db.Text, nullable=False)         # JSON string
+    boxes = db.Column(db.Text, nullable=False)          # JSON string
+    finishPoints = db.Column(db.Text, nullable=False)   # JSON string
+    initial = db.Column(db.Text, nullable=False)        # JSON string {row,col}
 
-# --- Seed default admin user on server load ---
-def _seed_admin():
-    if "admin" not in USERS_BY_USERNAME:
-        USERS_BY_USERNAME["admin"] = User(
-            id=str(uuid.uuid4()),
-            username="admin",
-            password_hash=generate_password_hash("admin"),
-            user_type="admin",
-        )
+    created_by = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False)
+    created_at = db.Column(db.Integer, nullable=False, default=lambda: int(time.time()))
 
-_seed_admin()
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "score": self.score,
+            "rows": self.rows,
+            "cols": self.cols,
+            "cell": self.cell,
+            "stones": json.loads(self.stones),
+            "boxes": json.loads(self.boxes),
+            "finishPoints": json.loads(self.finishPoints),
+            "initial": json.loads(self.initial),
+            "created_by": self.created_by,
+            "created_at": self.created_at,
+        }
 
+# -------------------- Utilities --------------------
 def make_token(user: User) -> str:
     payload = {
         "sub": user.id,
         "username": user.username,
-        "role": user.user_type,        # <-- OPTIONAL: put role in the JWT
+        "role": user.user_type,
         "exp": int(time.time()) + JWT_EXP_SECONDS,
     }
     return jwt.encode(payload, SECRET, algorithm="HS256")
 
 def serialize_user(user: User):
-    # Match the shape your frontend expects
-    return {
-        "id": user.id,
-        "username": user.username,
-        "user_type": user.user_type,    # <-- NEW: include in response
-    }
+    return {"id": user.id, "username": user.username, "user_type": user.user_type}
 
-# ---- Routes ----
-@app.post("/auth/signup")
-def signup():
-    data = request.get_json(force=True) or {}
-    username = (data.get("username") or "").strip()
-    password = data.get("password") or ""
-    # optional: allow client to request a type; default to "player"
-    user_type = (data.get("user_type") or "player").strip().lower()  # <-- NEW
-
-    if not username or not password:
-        return jsonify({"message": "username and password are required"}), 400
-    if username in USERS_BY_USERNAME:
-        return jsonify({"message": "Username already exists"}), 409
-
-    uid = str(uuid.uuid4())
-    user = User(
-        id=uid,
-        username=username,
-        password_hash=generate_password_hash(password),
-        user_type=user_type,           # <-- NEW
-    )
-    USERS_BY_USERNAME[username] = user
-
-    token = make_token(user)
-    return jsonify({"user": serialize_user(user), "accessToken": token})
-
-@app.post("/auth/login")
-def login():
-    data = request.get_json(force=True) or {}
-    username = (data.get("username") or "").strip()
-    password = data.get("password") or ""
-
-    user = USERS_BY_USERNAME.get(username)
-    app.logger.info("Login route hit")
-
-    if not user or not check_password_hash(user.password_hash, password):
-        return jsonify({"message": "Invalid username or password"}), 401
-    
-    app.logger.info(f"User {username} authenticated successfully")
-    app.logger.info(f"User type: {user.user_type}")
-    token = make_token(user)
-    # NOTE: user_type comes from the stored user, not from the request
-    return jsonify({"user": serialize_user(user), "accessToken": token})
-
-# ---- Levels model ----
-from dataclasses import asdict
-
-@dataclass
-class Level:
-    id: str
-    name: str
-    score: int
-    rows: int
-    cols: int
-    cell: int
-    stones: list[dict]           # [{row, col}, ...]
-    boxes: list[dict]
-    finishPoints: list[dict]
-    initial: dict                # {row, col}
-    created_by: str              # user id (from JWT)
-    created_at: int              # epoch seconds
-
-LEVELS: list[Level] = []  # in-memory; swap with a DB later
-
+def _require_admin(req):
+    auth = req.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        raise ValueError("Missing bearer token")
+    token = auth.split(" ", 1)[1].strip()
+    try:
+        claims = jwt.decode(token, SECRET, algorithms=["HS256"])
+    except jwt.ExpiredSignatureError:
+        raise ValueError("Token expired")
+    except jwt.InvalidTokenError:
+        raise ValueError("Invalid token")
+    if claims.get("role") != "admin":
+        raise ValueError("Admin privileges required")
+    return claims.get("sub"), claims
 
 def _coord_list(value, field_name):
     if not isinstance(value, list):
@@ -142,10 +124,8 @@ def _coord_list(value, field_name):
         out.append({"row": r, "col": c})
     return out
 
-
 def _in_bounds(r, c, rows, cols):
     return 0 <= r < rows and 0 <= c < cols
-
 
 def _validate_and_normalize_level(payload: dict) -> dict:
     required = ["name", "score", "rows", "cols", "cell", "stones", "boxes", "finishPoints", "initial"]
@@ -157,7 +137,6 @@ def _validate_and_normalize_level(payload: dict) -> dict:
     if not name:
         raise ValueError("name is required")
 
-    # ints
     try:
         rows = int(payload["rows"]); cols = int(payload["cols"]); cell = int(payload["cell"]); score = int(payload["score"])
     except Exception:
@@ -175,15 +154,12 @@ def _validate_and_normalize_level(payload: dict) -> dict:
     boxes = _coord_list(payload["boxes"], "boxes")
     finish = _coord_list(payload["finishPoints"], "finishPoints")
 
-    # Matching counts
     if len(boxes) != len(finish):
         raise ValueError("finishPoints count must equal boxes count")
 
-    # Bounds + overlaps
-    used = set()  # all occupied
+    used = set()
     def _k(rc): return f"{rc['row']},{rc['col']}"
 
-    # initial in bounds + reserve its cell
     if not _in_bounds(initial["row"], initial["col"], rows, cols):
         raise ValueError("initial is out of bounds")
     used.add(_k(initial))
@@ -202,7 +178,6 @@ def _validate_and_normalize_level(payload: dict) -> dict:
             if k in used:
                 raise ValueError(f"{label}[{i}] overlaps with another entity or initial at {k}")
             seen.add(k)
-        # reserve cells into global used
         used.update(seen)
 
     check_group(stones, "stones")
@@ -221,32 +196,54 @@ def _validate_and_normalize_level(payload: dict) -> dict:
         "initial": initial,
     }
 
+# -------------------- Auth Routes --------------------
+@app.post("/auth/signup")
+def signup():
+    data = request.get_json(force=True) or {}
+    username = (data.get("username") or "").strip()
+    password = data.get("password") or ""
+    user_type = (data.get("user_type") or "player").strip().lower()
 
-def _require_admin(request):
-    """Return (user_id, claims) if admin, else raise ValueError."""
-    auth = request.headers.get("Authorization", "")
-    if not auth.startswith("Bearer "):
-        raise ValueError("Missing bearer token")
-    token = auth.split(" ", 1)[1].strip()
-    try:
-        claims = jwt.decode(token, SECRET, algorithms=["HS256"])
-    except jwt.ExpiredSignatureError:
-        raise ValueError("Token expired")
-    except jwt.InvalidTokenError:
-        raise ValueError("Invalid token")
+    if not username or not password:
+        return jsonify({"message": "username and password are required"}), 400
+    if User.query.filter_by(username=username).first():
+        return jsonify({"message": "Username already exists"}), 409
 
-    role = claims.get("role")
-    if role != "admin":
-        raise ValueError("Admin privileges required")
-    return claims.get("sub"), claims
+    user = User(
+        id=str(uuid.uuid4()),
+        username=username,
+        password_hash=generate_password_hash(password),
+        user_type=user_type,
+    )
+    db.session.add(user)
+    db.session.commit()
 
+    token = make_token(user)
+    return jsonify({"user": serialize_user(user), "accessToken": token})
+
+@app.post("/auth/login")
+def login():
+    data = request.get_json(force=True) or {}
+    username = (data.get("username") or "").strip()
+    password = data.get("password") or ""
+
+    app.logger.info("Login route hit")
+
+    user = User.query.filter_by(username=username).first()
+    if not user or not check_password_hash(user.password_hash, password):
+        return jsonify({"message": "Invalid username or password"}), 401
+
+    app.logger.info(f"User {username} authenticated successfully")
+    app.logger.info(f"User type: {user.user_type}")
+
+    token = make_token(user)
+    return jsonify({"user": serialize_user(user), "accessToken": token})
+
+# -------------------- Levels Routes --------------------
 @app.get("/levels")
 def list_levels():
-    # Return all levels (full payload); trim if you prefer summaries
-    return jsonify({
-        "levels": [asdict(l) for l in LEVELS]
-    })
-
+    levels = Level.query.order_by(Level.created_at.desc()).all()
+    return jsonify({"levels": [l.to_dict() for l in levels]})
 
 @app.post("/levels")
 def create_level():
@@ -261,8 +258,7 @@ def create_level():
     except ValueError as e:
         return jsonify({"message": str(e)}), 400
 
-    # Optional: unique name
-    if any(l.name.lower() == norm["name"].lower() for l in LEVELS):
+    if Level.query.filter(Level.name.ilike(norm["name"])).first():
         return jsonify({"message": "Level name already exists"}), 409
 
     level = Level(
@@ -272,22 +268,32 @@ def create_level():
         rows=norm["rows"],
         cols=norm["cols"],
         cell=norm["cell"],
-        stones=norm["stones"],
-        boxes=norm["boxes"],
-        finishPoints=norm["finishPoints"],
-        initial=norm["initial"],
+        stones=json.dumps(norm["stones"]),
+        boxes=json.dumps(norm["boxes"]),
+        finishPoints=json.dumps(norm["finishPoints"]),
+        initial=json.dumps(norm["initial"]),
         created_by=user_id or "unknown",
         created_at=int(time.time()),
     )
-    LEVELS.append(level)
-    return jsonify({"level": asdict(level)}), 201
+    db.session.add(level)
+    db.session.commit()
+    return jsonify({"level": level.to_dict()}), 201
 
-CORS(
-    app,
-    resources={
-        r"/auth/*": {"origins": [FRONTEND_ORIGIN]},
-        r"/levels": {"origins": [FRONTEND_ORIGIN]},
-        r"/levels/*": {"origins": [FRONTEND_ORIGIN]},
-    },
-    supports_credentials=True,
-)
+# -------------------- Bootstrap --------------------
+def _seed_admin():
+    if not User.query.filter_by(username="admin").first():
+        admin = User(
+            id=str(uuid.uuid4()),
+            username="admin",
+            password_hash=generate_password_hash("admin"),
+            user_type="admin",
+        )
+        db.session.add(admin)
+        db.session.commit()
+
+with app.app_context():
+    db.create_all()
+    _seed_admin()
+
+if __name__ == "__main__":
+    app.run(debug=True, port=8000)
