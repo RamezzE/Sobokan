@@ -1,32 +1,79 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import GridBoard from "@/components/GridBoard";
 import {
     stoneCoordinates,
     boxCoordinates,
     finishCoordinates,
 } from "@/constants/coordinates";
+import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "@/store/useAuthStore";
 
 const GameScreen = () => {
+    const navigate = useNavigate();
+
     const [restart, setRestart] = useState(false);
+    const { user, logout } = useAuthStore();
+
+    useEffect(() => {
+        if (!user || user.user_type !== "player")
+            navigate("/signin");
+
+    }, [user]);
+
+    if (!user) return null;
 
     return (
         <div className="w-full max-w-3xl">
             <div className="bg-white/10 shadow-2xl backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden">
                 {/* Header */}
                 <div className="px-8 py-4 border-white/10 border-b">
-                    <div className="flex justify-between items-center">
+                    <div className="flex flex-col justify-between items-start gap-y-4">
+
+                        <div className="flex flex-row items-center gap-x-2 w-full">
+
+                            <button
+                                onClick={async () => {
+                                    await logout();
+                                    navigate("/signin");
+                                }}
+                                className="bg-white/10 hover:bg-white/20 mr-2 p-2 border border-white/10 rounded-xl text-slate-200 transition"
+                                aria-label="Logout"
+                                title="Logout"
+                            >
+                                {/* inline logout icon */}
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                                    <polyline points="16 17 21 12 16 7" />
+                                    <line x1="21" y1="12" x2="9" y2="12" />
+                                </svg>
+                            </button>
+
+                            <span className="hidden sm:inline mr-3 text-slate-300 text-sm">
+                                @{user.username}
+                            </span>
+
+                            <button
+                                onClick={() => setRestart(true)}
+                                className="bg-indigo-500 hover:bg-indigo-400 disabled:opacity-50 mr-2 ml-auto p-2 border border-white/10 rounded-xl text-slate-200 transition"
+                                aria-label="Restart"
+                                title="Restart"
+                            >
+                                {/* inline Restart icon */}
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="21 3 21 9 15 9" />
+                                    <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+                                </svg>
+                            </button>
+                        </div>
+
+
                         <div>
                             <h1 className="font-semibold text-white text-2xl sm:text-3xl">Sobokan</h1>
                             <p className="mt-1 text-slate-300 text-sm">
                                 Push all boxes onto the red dots to win.
                             </p>
                         </div>
-                        <button
-                            onClick={() => setRestart(true)}
-                            className="bg-indigo-500 hover:bg-indigo-400 disabled:opacity-50 shadow-indigo-500/20 shadow-lg px-4 py-2 rounded-xl font-semibold text-white transition disabled:cursor-not-allowed"
-                        >
-                            Restart
-                        </button>
+
                     </div>
                 </div>
 

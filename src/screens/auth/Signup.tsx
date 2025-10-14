@@ -1,63 +1,52 @@
-import { useState } from "react";
-import { Link } from "react-router";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router";
+import { useAuthStore } from "@/store/useAuthStore";
 
 type SignUpValues = {
     username: string;
     password: string;
     confirm: string;
-    agree: boolean;
 };
 
 const SignUpPage = () => {
+    const navigate = useNavigate();
+    const { user, signup: onSubmit } = useAuthStore();
 
-    const onSubmit = async (values: Omit<SignUpValues, "confirm">) => {
-        // Simulate an async operation like an API call
-        return new Promise<void>((resolve) => {
-            setTimeout(() => {
-                console.log("User signed up:", values);
-                resolve();
-            }, 1000);
-        });
-    };
+    useEffect(() => {
+        if (user && user.user_type === "player") navigate("/game");
+    }, [user, navigate]);
 
     const [values, setValues] = useState<SignUpValues>({
         username: "",
         password: "",
         confirm: "",
-        agree: false,
     });
     const [touched, setTouched] = useState<Record<keyof SignUpValues, boolean>>({
         username: false,
         password: false,
         confirm: false,
-        agree: false,
     });
     const [showPw, setShowPw] = useState(false);
     const [showPw2, setShowPw2] = useState(false);
     const [loading, setLoading] = useState(false);
 
+    // NEW: local error state
+    const [error, setError] = useState<string | null>(null);
+
     const pwMatch = values.password.length > 0 && values.password === values.confirm;
     const errors = {
         username: !values.username.trim() ? "Username is required" : "",
         password: !values.password ? "Password is required" : "",
-        confirm: !values.confirm
-            ? "Confirm your password"
-            : !pwMatch
-                ? "Passwords do not match"
-                : "",
-        agree: !values.agree ? "You must agree to the Terms" : "",
+        confirm: !values.confirm ? "Confirm your password" : !pwMatch ? "Passwords do not match" : "",
     };
-    const isValid =
-        !errors.username &&
-        !errors.password &&
-        !errors.confirm &&
-        !errors.agree;
+    const isValid = !errors.username && !errors.password && !errors.confirm;
 
     const handleChange =
         (field: keyof SignUpValues) =>
             (e: React.ChangeEvent<HTMLInputElement>) => {
                 const v = e.target.type === "checkbox" ? (e.target as any).checked : e.target.value;
                 setValues((s) => ({ ...s, [field]: v }));
+                if (error) setError(null); // clear server error while editing
             };
 
     const handleBlur = (field: keyof SignUpValues) => () =>
@@ -65,21 +54,20 @@ const SignUpPage = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setTouched({
-            username: true,
-            password: true,
-            confirm: true,
-            agree: true,
-        });
+        setTouched({ username: true, password: true, confirm: true });
         if (!isValid) return;
+
         try {
             setLoading(true);
+            setError(null); // clear any previous error
             await onSubmit?.({
                 username: values.username.trim(),
                 password: values.password,
-                agree: values.agree,
             });
-            // navigate on success, e.g. router.push("/welcome")
+            // navigation handled by useEffect once user is set
+        } catch (err: any) {
+            // shows Flask's {"message": "..."} that axios mapped to err.message
+            setError(err?.message || "Signup failed");
         } finally {
             setLoading(false);
         }
@@ -96,10 +84,18 @@ const SignUpPage = () => {
                         <h1 className="mt-4 font-semibold text-white text-2xl sm:text-3xl">
                             Create your account
                         </h1>
-                        <p className="mt-1 text-slate-300 text-sm">
-                            It only takes a minute.
-                        </p>
+                        <p className="mt-1 text-slate-300 text-sm">It only takes a minute.</p>
                     </div>
+
+                    {/* NEW: error banner */}
+                    {error && (
+                        <div
+                            role="alert"
+                            className="bg-rose-500/10 mb-4 px-4 py-2 border border-rose-400/40 rounded-xl text-rose-200 text-sm"
+                        >
+                            {error}
+                        </div>
+                    )}
 
                     <form onSubmit={handleSubmit} noValidate>
                         {/* Username */}
@@ -193,28 +189,6 @@ const SignUpPage = () => {
                             )}
                         </div>
 
-                        {/* Terms */}
-                        <label className="inline-flex items-center gap-2 mt-4 text-slate-300 text-sm">
-                            <input
-                                type="checkbox"
-                                checked={values.agree}
-                                onChange={handleChange("agree")}
-                                onBlur={handleBlur("agree")}
-                                required
-                                aria-invalid={!!(touched.agree && errors.agree)}
-                                className="bg-white/5 border-white/20 rounded focus:ring-indigo-300/40 w-4 h-4 text-indigo-400"
-                            />
-                            I agree to the{" "}
-                            <a className="text-indigo-300 hover:text-white underline underline-offset-4" href="#">
-                                Terms & Privacy
-                            </a>
-                        </label>
-                        {touched.agree && errors.agree && (
-                            <p role="alert" className="mt-1 text-rose-300 text-xs">
-                                {errors.agree}
-                            </p>
-                        )}
-
                         {/* Submit */}
                         <button
                             type="submit"
@@ -243,6 +217,6 @@ const SignUpPage = () => {
             </div>
         </div>
     );
-}
+};
 
 export default SignUpPage;

@@ -1,19 +1,18 @@
-import { useState } from "react";
-import { Link } from "react-router";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router";
+import { useAuthStore } from "@/store/useAuthStore";
 
 type LoginValues = { username: string; password: string };
 
 const LoginPage = () => {
+    const navigate = useNavigate();
+    const { user, login: onSubmit } = useAuthStore();
 
-    const onSubmit = async (values: LoginValues) => {
-        // Simulate an async operation like an API call
-        return new Promise<void>((resolve) => {
-            setTimeout(() => {
-                console.log("User logged in:", values);
-                resolve();
-            }, 1000);
-        });
-    };
+    useEffect(() => {
+        if (user && user.user_type === "player") navigate("/game");
+
+        console.log("current user", user);
+    }, [user, navigate]);
 
     const [values, setValues] = useState<LoginValues>({ username: "", password: "" });
     const [touched, setTouched] = useState<{ username: boolean; password: boolean }>({
@@ -22,6 +21,9 @@ const LoginPage = () => {
     });
     const [showPw, setShowPw] = useState(false);
     const [loading, setLoading] = useState(false);
+
+    // NEW: local error state
+    const [error, setError] = useState<string | null>(null);
 
     const errors = {
         username: !values.username.trim() ? "Username is required" : "",
@@ -32,6 +34,7 @@ const LoginPage = () => {
     const handleChange =
         (field: keyof LoginValues) => (e: React.ChangeEvent<HTMLInputElement>) => {
             setValues((v) => ({ ...v, [field]: e.target.value }));
+            if (error) setError(null); // clear error as user edits
         };
 
     const handleBlur = (field: keyof LoginValues) => () =>
@@ -44,9 +47,13 @@ const LoginPage = () => {
 
         try {
             setLoading(true);
-            await onSubmit?.(values);
-            // Do your navigation here on success
-            // e.g., router.push("/dashboard")
+            setError(null); // clear any old error
+            const response = await onSubmit?.(values);
+            console.log("login response", response);
+            // navigation is handled by the useEffect after user is set
+        } catch (err: any) {
+            // axios/Zustand throws with message from server (response.message)
+            setError(err?.message || "Login failed");
         } finally {
             setLoading(false);
         }
@@ -66,12 +73,19 @@ const LoginPage = () => {
                         </p>
                     </div>
 
+                    {/* NEW: error banner */}
+                    {error && (
+                        <div
+                            role="alert"
+                            className="bg-rose-500/10 mb-4 px-4 py-2 border border-rose-400/40 rounded-xl text-rose-200 text-sm"
+                        >
+                            {error}
+                        </div>
+                    )}
+
                     <form onSubmit={handleSubmit} noValidate>
                         {/* Username */}
-                        <label
-                            htmlFor="username"
-                            className="block font-medium text-slate-200 text-sm"
-                        >
+                        <label htmlFor="username" className="block font-medium text-slate-200 text-sm">
                             Username
                         </label>
                         <div className="mt-1">
@@ -90,21 +104,14 @@ const LoginPage = () => {
                                 autoComplete="username"
                             />
                             {touched.username && errors.username && (
-                                <p
-                                    id="username-error"
-                                    role="alert"
-                                    className="mt-1 text-rose-300 text-xs"
-                                >
+                                <p id="username-error" role="alert" className="mt-1 text-rose-300 text-xs">
                                     {errors.username}
                                 </p>
                             )}
                         </div>
 
                         {/* Password */}
-                        <label
-                            htmlFor="password"
-                            className="block mt-4 font-medium text-slate-200 text-sm"
-                        >
+                        <label htmlFor="password" className="block mt-4 font-medium text-slate-200 text-sm">
                             Password
                         </label>
                         <div className="relative mt-1">
@@ -131,11 +138,7 @@ const LoginPage = () => {
                                 {showPw ? "Hide" : "Show"}
                             </button>
                             {touched.password && errors.password && (
-                                <p
-                                    id="password-error"
-                                    role="alert"
-                                    className="mt-1 text-rose-300 text-xs"
-                                >
+                                <p id="password-error" role="alert" className="mt-1 text-rose-300 text-xs">
                                     {errors.password}
                                 </p>
                             )}
@@ -185,6 +188,6 @@ const LoginPage = () => {
             </div>
         </div>
     );
-}
+};
 
 export default LoginPage;
