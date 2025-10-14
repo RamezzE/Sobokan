@@ -33,7 +33,7 @@ const GameScreen = () => {
     if (!user) return null;
 
     return (
-        <div className="w-full max-w-3xl">
+        <div className="w-full max-w-5xl">
             <div className="bg-white/10 shadow-2xl backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden">
                 {/* Header */}
                 <div className="px-8 py-4 border-white/10 border-b">

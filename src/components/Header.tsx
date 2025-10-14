@@ -6,7 +6,7 @@ const Header = () => {
     const { user, logout } = useAuthStore();
     if (!user) return null;
     return (
-        <div className="flex flex-row items-center gap-x-2 p-4 w-full">
+        <div className="flex flex-row items-center gap-x-2 p-4 w-full max-w-5xl">
             <button
                 onClick={async () => {
                     await logout();
