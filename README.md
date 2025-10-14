@@ -1,73 +1,24 @@
-# React + TypeScript + Vite
+# Sobokan Task 1
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Video Preview
+https://github.com/user-attachments/assets/16f0f4b7-7d80-4037-8679-6cae09d8ebb3
 
-Currently, two official plugins are available:
+## Methodology 
+Since this is a simple 2D game, all data is handled by changes in 2D coordinates that reflect within the UI. The GridBoard component has props to determine which tiles contain sand (normal tile), stone (obstacle) or box (tile that can be moved). 
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```ts
+type GridBoardProps = {
+    rows?: number;
+    cols?: number;
+    cell?: number; // px per cell
+    initial?: { row: number; col: number };
+    stones?: Coord[]; // cells with stone.png
+    boxes?: Coord[];   // initial layout only
+    restart?: boolean; // when toggled, resets player and boxes to initial
+    onRestarted?: () => void; // called after restart is processed
+    finishPoints?: Coord[];  // must have same count as initial boxes
+};
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## How AI helped
+I used ChatGPT 5 to assist in developing. It helped a lot with the logic of accurately moving the PlayerSprite component from one tile to another, taking the tile size into consideration, as well as the logic of detecting when the player can move a box or not. These were all simple 2D coordinate comparisons.  
