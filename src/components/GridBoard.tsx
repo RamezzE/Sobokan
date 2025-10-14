@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import PlayerSprite from "./PlayerSprite";
 import stone from "@/assets/stone.svg";
 import box from "@/assets/box.svg";
@@ -13,7 +13,7 @@ type GridBoardProps = {
     initial?: { row: number; col: number };
     showCoords?: boolean;
     stones?: Coord[]; // cells with stone.png
-    boxes?: Coord[];  // cells with box.svg
+    boxes?: Coord[];   // initial layout only
 };
 
 const GridBoard = ({
@@ -28,25 +28,71 @@ const GridBoard = ({
     const [pos, setPos] = useState(initial);
     const boardRef = useRef<HTMLDivElement>(null);
 
-    const clamp = (v: number, min: number, max: number) =>
-        Math.max(min, Math.min(max, v));
+    // Normalize helper
+    const norm = (arr: Coord[] = []) =>
+        arr.map((s) => (Array.isArray(s) ? { row: s[0], col: s[1] } : s));
+
+    // Treat boxes prop as initial layout only
+    const [boxCells, setBoxCells] = useState<{ row: number; col: number }[]>(
+        () => norm(boxes)
+    );
+
+    // Precompute stone set (never changes)
+    const stoneSet = useMemo(() => {
+        const s = new Set<string>();
+        norm(stones).forEach(({ row, col }) => s.add(`${row},${col}`));
+        return s;
+    }, [stones]);
+
+    // Box set recomputed from state
+    const boxSet = useMemo(() => {
+        const s = new Set<string>();
+        boxCells.forEach(({ row, col }) => s.add(`${row},${col}`));
+        return s;
+    }, [boxCells]);
+
+    const inBounds = (r: number, c: number) =>
+        r >= 0 && r < rows && c >= 0 && c < cols;
+
+    const isStone = (r: number, c: number) => stoneSet.has(`${r},${c}`);
+    const isBox = (r: number, c: number) => boxSet.has(`${r},${c}`);
 
     const moveBy = (dr: number, dc: number) => {
-        // if there's a stone in the way, don't move
-        const nextRow = clamp(pos.row + dr, 0, rows - 1);
-        const nextCol = clamp(pos.col + dc, 0, cols - 1);
+        setPos((p) => {
+            const nr = p.row + dr;
+            const nc = p.col + dc;
 
-        const hasStone = stones.some(
-            (s) =>
-                (Array.isArray(s) ? s[0] : s.row) === nextRow &&
-                (Array.isArray(s) ? s[1] : s.col) === nextCol
-        );
-        if (hasStone) return;
-        
-        setPos((p) => ({
-            row: clamp(p.row + dr, 0, rows - 1),
-            col: clamp(p.col + dc, 0, cols - 1),
-        }));
+            // Block moving outside grid
+            if (!inBounds(nr, nc)) return p;
+
+            // Block stepping into stones
+            if (isStone(nr, nc)) return p;
+
+            // If next cell is a box, try to push it
+            if (isBox(nr, nc)) {
+                const br = nr + dr;
+                const bc = nc + dc;
+
+                // Can't push out of bounds, into another box, or into a stone
+                if (!inBounds(br, bc) || isStone(br, bc) || isBox(br, bc)) {
+                    return p;
+                }
+
+                // Perform the push: move that box from (nr,nc) -> (br,bc)
+                setBoxCells((prev) => {
+                    // Move the single box that matches (nr,nc)
+                    return prev.map((b) =>
+                        b.row === nr && b.col === nc ? { row: br, col: bc } : b
+                    );
+                });
+
+                // Player moves into the box's former cell
+                return { row: nr, col: nc };
+            }
+
+            // Normal move into empty cell
+            return { row: nr, col: nc };
+        });
     };
 
     useEffect(() => {
@@ -94,12 +140,6 @@ const GridBoard = ({
         ["--c" as any]: `${pos.col}`,
     };
 
-    const norm = (arr: Coord[]) =>
-        arr.map((s) => (Array.isArray(s) ? { row: s[0], col: s[1] } : s));
-
-    const stoneCells = norm(stones);
-    const boxCells = norm(boxes);
-
     return (
         <div className="space-y-2">
             <div
@@ -122,17 +162,7 @@ const GridBoard = ({
                 <div className="z-0 absolute inset-0">
                     {Array.from({ length: rows }).map((_, r) =>
                         Array.from({ length: cols }).map((_, c) => {
-                            const hasStone = stones.some(
-                                (s) =>
-                                    (Array.isArray(s) ? s[0] : s.row) === r &&
-                                    (Array.isArray(s) ? s[1] : s.col) === c
-                            );
-                            const hasBox = boxes.some(
-                                (b) =>
-                                    (Array.isArray(b) ? b[0] : b.row) === r &&
-                                    (Array.isArray(b) ? b[1] : b.col) === c
-                            );
-                            if (hasStone || hasBox) return null; // skip if stone/box here
+                            if (stoneSet.has(`${r},${c}`) || boxSet.has(`${r},${c}`)) return null;
                             return (
                                 <div
                                     key={`sand-${r}-${c}`}
@@ -161,19 +191,12 @@ const GridBoard = ({
                     )}
                 </div>
 
-
                 {/* Stones layer */}
                 <div className="absolute inset-0">
-
-                    {stoneCells.map(({ row, col }, idx) => (
+                    {useMemo(() => norm(stones), [stones]).map(({ row, col }, idx) => (
                         <div
                             key={`stone-${row}-${col}-${idx}`}
-                            style={
-                                {
-                                    ["--sr" as any]: row,
-                                    ["--sc" as any]: col,
-                                } as React.CSSProperties
-                            }
+                            style={{ ["--sr" as any]: row, ["--sc" as any]: col } as React.CSSProperties}
                             className={[
                                 "absolute top-0 left-0",
                                 "w-[var(--cell)] h-[var(--cell)]",
@@ -191,17 +214,13 @@ const GridBoard = ({
                     ))}
                 </div>
 
+
                 {/* Boxes layer (above stones, below player) */}
                 <div className="z-10 absolute inset-0">
                     {boxCells.map(({ row, col }, idx) => (
                         <div
                             key={`box-${row}-${col}-${idx}`}
-                            style={
-                                {
-                                    ["--br" as any]: row,
-                                    ["--bc" as any]: col,
-                                } as React.CSSProperties
-                            }
+                            style={{ ["--br" as any]: row, ["--bc" as any]: col } as React.CSSProperties}
                             className={[
                                 "absolute top-0 left-0",
                                 "w-[var(--cell)] h-[var(--cell)]",
@@ -218,6 +237,7 @@ const GridBoard = ({
                         </div>
                     ))}
                 </div>
+
 
                 {/* Player sprite (top layer) */}
                 <div
